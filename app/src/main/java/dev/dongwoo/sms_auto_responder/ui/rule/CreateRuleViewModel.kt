@@ -3,7 +3,11 @@ package dev.dongwoo.sms_auto_responder.ui.rule
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.dongwoo.sms_auto_responder.data.dao.RuleWithDetails
 import dev.dongwoo.sms_auto_responder.data.repository.RuleRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -12,26 +16,50 @@ class CreateRuleViewModel @Inject constructor(
     private val ruleRepository: RuleRepository
 ) : ViewModel() {
 
+    private val _currentRule = MutableStateFlow<RuleWithDetails?>(null)
+    val currentRule: StateFlow<RuleWithDetails?> = _currentRule.asStateFlow()
+
+    fun loadRule(ruleId: Int) {
+        viewModelScope.launch {
+            _currentRule.value = ruleRepository.getRuleById(ruleId)
+        }
+    }
+
     fun saveRule(
-        appName: String, // We might just use package name as name for now if user doesn't specify rule name explicitly, or ask for rule name?
-        // Spec "규칙 이름" exists in RuleEntity. Spec UI doesn't show "Rule Name" input field!
-        // "규칙 이름 (상단, 진한 네이비): 예) '카카오톡 결제 알림'" in Home Screen spec.
-        // But Create Screen spec inputs are: App Dropdown, Keyword, Phone, Message.
-        // Inference: Rule Name should be auto-generated (e.g., "App Name + Rule") or I missed a field.
-        // Let's assume "App Name + Rule" or just "App Name".
+        appName: String,
         packageName: String,
         keywords: List<String>,
         phoneNumber: String,
-        message: String,
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
             ruleRepository.addRule(
-                name = "$appName 알림", // Auto-generate name
+                name = "$appName 알림",
                 phoneNumber = phoneNumber,
-                msgTemplate = message,
                 targetApps = listOf(packageName),
                 keywords = keywords
+            )
+            onSuccess()
+        }
+    }
+
+    fun updateRule(
+        ruleId: Int,
+        appName: String,
+        packageName: String,
+        keywords: List<String>,
+        phoneNumber: String,
+        isEnabled: Boolean,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch {
+            ruleRepository.updateRule(
+                ruleId = ruleId,
+                name = "$appName 알림",
+                phoneNumber = phoneNumber,
+                targetApps = listOf(packageName),
+                keywords = keywords,
+                isEnabled = isEnabled
             )
             onSuccess()
         }

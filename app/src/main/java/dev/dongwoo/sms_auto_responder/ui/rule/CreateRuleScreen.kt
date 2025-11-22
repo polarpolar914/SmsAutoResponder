@@ -7,8 +7,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import dev.dongwoo.sms_auto_responder.ui.component.CustomButton
 import dev.dongwoo.sms_auto_responder.ui.component.InputCard
 import dev.dongwoo.sms_auto_responder.ui.theme.*
@@ -31,10 +34,49 @@ fun CreateRuleScreen(
     viewModel: CreateRuleViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val ruleIdString = backStackEntry?.arguments?.getString("ruleId")
+    val ruleId = ruleIdString?.toIntOrNull()
+    val isEditMode = ruleId != null
+
+    // State
     var selectedApp by remember { mutableStateOf<AppInfo?>(null) }
-    var keywordInput by remember { mutableStateOf("") }
+    val keywords = remember { mutableStateListOf("") }
     var phoneNumber by remember { mutableStateOf("") }
-    var messageTemplate by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+
+    // Load existing rule if in edit mode
+    val currentRule by viewModel.currentRule.collectAsState()
+    
+    LaunchedEffect(ruleId) {
+        if (ruleId != null) {
+            viewModel.loadRule(ruleId)
+        }
+    }
+
+    // Populate fields when rule loads
+    LaunchedEffect(currentRule) {
+        currentRule?.let { ruleDetails ->
+            phoneNumber = ruleDetails.rule.phoneNumber
+            keywords.clear()
+            if (ruleDetails.keywords.isNotEmpty()) {
+                keywords.addAll(ruleDetails.keywords.map { it.keyword })
+            } else {
+                keywords.add("")
+            }
+            // Find the app
+            val packageName = ruleDetails.apps.firstOrNull()?.packageName
+            if (packageName != null) {
+                val pm = context.packageManager
+                try {
+                    val appInfo = pm.getApplicationInfo(packageName, 0)
+                    selectedApp = AppInfo(appInfo.loadLabel(pm).toString(), packageName)
+                } catch (e: Exception) {
+                    selectedApp = AppInfo(packageName, packageName)
+                }
+            }
+        }
+    }
 
     // Fetch installed apps
     val installedApps = remember {
@@ -47,13 +89,11 @@ fun CreateRuleScreen(
         }.sortedBy { it.name }
     }
 
-    var expanded by remember { mutableStateOf(false) }
-
     Scaffold(
         containerColor = DeepMidnight,
         topBar = {
             TopAppBar(
-                title = { Text("새 규칙 만들기", color = TextHighEmphasisOnDark) },
+                title = { Text(if (isEditMode) "규칙 수정하기" else "새 규칙 만들기", color = TextHighEmphasisOnDark) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextHighEmphasisOnDark)
@@ -94,7 +134,7 @@ fun CreateRuleScreen(
                             focusedBorderColor = PrimaryAccent,
                             unfocusedBorderColor = TextMediumEmphasisOnDark
                         ),
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
@@ -114,24 +154,56 @@ fun CreateRuleScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Keyword Input
-                OutlinedTextField(
-                    value = keywordInput,
-                    onValueChange = { keywordInput = it },
-                    label = { Text("포함할 키워드 (엔터로 추가)") }, // Simplification: just comma separated for now or single line
-                    placeholder = { Text("예: 결제, 입금") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextHighEmphasisOnDark,
-                        unfocusedTextColor = TextHighEmphasisOnDark,
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedLabelColor = PrimaryAccent,
-                        unfocusedLabelColor = TextMediumEmphasisOnDark,
-                        focusedBorderColor = PrimaryAccent,
-                        unfocusedBorderColor = TextMediumEmphasisOnDark
-                    ),
+                // Keyword Inputs with + button
+                Text("포함할 키워드", style = Typography.labelLarge, color = TextMediumEmphasisOnDark)
+                keywords.forEachIndexed { index, keyword ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = keyword,
+                            onValueChange = { keywords[index] = it },
+                            placeholder = { Text("예: 결제, 입금") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextHighEmphasisOnDark,
+                                unfocusedTextColor = TextHighEmphasisOnDark,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedLabelColor = PrimaryAccent,
+                                unfocusedLabelColor = TextMediumEmphasisOnDark,
+                                focusedBorderColor = PrimaryAccent,
+                                unfocusedBorderColor = TextMediumEmphasisOnDark
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        // Remove button (only if more than one keyword)
+                        if (keywords.size > 1) {
+                            IconButton(
+                                onClick = { keywords.removeAt(index) },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Remove,
+                                    contentDescription = "Remove keyword",
+                                    tint = TextMediumEmphasisOnDark
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // Add keyword button
+                TextButton(
+                    onClick = { keywords.add("") },
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add keyword", tint = PrimaryAccent)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("키워드 추가", color = PrimaryAccent)
+                }
             }
 
             // Connector
@@ -170,28 +242,10 @@ fun CreateRuleScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                OutlinedTextField(
-                    value = messageTemplate,
-                    onValueChange = { messageTemplate = it },
-                    label = { Text("보낼 메시지 내용") },
-                    placeholder = { Text("템플릿 변수 사용 가능 (예: {{title}})") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextHighEmphasisOnDark,
-                        unfocusedTextColor = TextHighEmphasisOnDark,
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedLabelColor = PrimaryAccent,
-                        unfocusedLabelColor = TextMediumEmphasisOnDark,
-                        focusedBorderColor = PrimaryAccent,
-                        unfocusedBorderColor = TextMediumEmphasisOnDark
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3
-                )
                 Text(
-                    "사용 가능 변수: {{title}}(제목), {{text}}(내용), {{time}}(시간)",
+                    "알림 내용이 그대로 SMS로 전송됩니다",
                     style = Typography.bodyMedium,
                     color = TextMediumEmphasisOnDark,
                     modifier = Modifier.padding(top = 8.dp)
@@ -201,18 +255,29 @@ fun CreateRuleScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             CustomButton(
-                text = "규칙 저장하기",
+                text = if (isEditMode) "규칙 수정하기" else "규칙 저장하기",
                 onClick = {
-                    if (selectedApp != null && phoneNumber.isNotEmpty() && messageTemplate.isNotEmpty()) {
-                        val keywords = keywordInput.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                        viewModel.saveRule(
-                            appName = selectedApp!!.name,
-                            packageName = selectedApp!!.packageName,
-                            keywords = keywords,
-                            phoneNumber = phoneNumber,
-                            message = messageTemplate,
-                            onSuccess = { navController.popBackStack() }
-                        )
+                    if (selectedApp != null && phoneNumber.isNotEmpty()) {
+                        val filteredKeywords = keywords.filter { it.isNotBlank() }
+                        if (isEditMode && ruleId != null) {
+                            viewModel.updateRule(
+                                ruleId = ruleId,
+                                appName = selectedApp!!.name,
+                                packageName = selectedApp!!.packageName,
+                                keywords = filteredKeywords,
+                                phoneNumber = phoneNumber,
+                                isEnabled = currentRule?.rule?.isEnabled ?: true,
+                                onSuccess = { navController.popBackStack() }
+                            )
+                        } else {
+                            viewModel.saveRule(
+                                appName = selectedApp!!.name,
+                                packageName = selectedApp!!.packageName,
+                                keywords = filteredKeywords,
+                                phoneNumber = phoneNumber,
+                                onSuccess = { navController.popBackStack() }
+                            )
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp)

@@ -13,9 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -98,7 +95,7 @@ fun HomeScreen(
                  containerColor = DeepMidnight,
                  actions = {
                      IconButton(onClick = { /* Stay on Home */ }) {
-                         Icon(Icons.Default.AccountCircle, contentDescription = "Home", tint = PrimaryAccent)
+                         Icon(Icons.Default.Add, contentDescription = "Home", tint = PrimaryAccent)
                      }
                      Spacer(modifier = Modifier.weight(1f))
                      IconButton(onClick = { navController.navigate(Screen.History.route) }) {
@@ -107,7 +104,7 @@ fun HomeScreen(
                  },
                  floatingActionButton = {
                      CustomIconButton(
-                         onClick = { navController.navigate(Screen.CreateRule.route) },
+                         onClick = { navController.navigate(Screen.CreateRule.createRoute()) },
                          modifier = Modifier.size(64.dp)
                      ) {
                          Icon(Icons.Default.Add, contentDescription = "Add Rule", tint = TextHighEmphasisOnDark, modifier = Modifier.size(32.dp))
@@ -130,34 +127,22 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Top App Bar mock inside column
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Icon(Icons.Default.AccountCircle, contentDescription = "Profile", tint = TextMediumEmphasisOnDark)
-                    Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = TextHighEmphasisOnDark)
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text("총 발송 횟수", style = Typography.titleMedium, color = TextMediumEmphasisOnDark)
                 Text("${successCount} 건", style = Typography.displayLarge, color = TextHighEmphasisOnDark)
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     QuickActionButton(icon = Icons.Default.Add, label = "규칙 추가") {
-                        navController.navigate(Screen.CreateRule.route)
+                        navController.navigate(Screen.CreateRule.createRoute())
                     }
                     QuickActionButton(icon = Icons.Default.History, label = "발송 기록") {
                         navController.navigate(Screen.History.route)
-                    }
-                    QuickActionButton(icon = Icons.Default.Settings, label = "설정") {
-                        // Navigate to Settings or show placeholder
                     }
                 }
             }
@@ -182,9 +167,13 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(rules) { ruleDetails ->
-                        RuleItem(ruleDetails) { isEnabled ->
-                            viewModel.toggleRule(ruleDetails.rule.ruleId, isEnabled)
-                        }
+                        RuleItem(
+                            ruleDetails = ruleDetails,
+                            onClick = { navController.navigate(Screen.CreateRule.createRoute(ruleDetails.rule.ruleId)) },
+                            onToggle = { isEnabled ->
+                                viewModel.toggleRule(ruleDetails.rule.ruleId, isEnabled)
+                            }
+                        )
                     }
                 }
             }
@@ -206,12 +195,14 @@ fun QuickActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun RuleItem(ruleDetails: RuleWithDetails, onToggle: (Boolean) -> Unit) {
+fun RuleItem(ruleDetails: RuleWithDetails, onClick: () -> Unit, onToggle: (Boolean) -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier

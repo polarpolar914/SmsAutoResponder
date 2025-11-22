@@ -16,7 +16,6 @@ class RuleRepository @Inject constructor(
     suspend fun addRule(
         name: String,
         phoneNumber: String,
-        msgTemplate: String,
         targetApps: List<String>,
         keywords: List<String>
     ) {
@@ -24,7 +23,7 @@ class RuleRepository @Inject constructor(
             ruleName = name,
             isEnabled = true,
             phoneNumber = phoneNumber,
-            msgTemplate = msgTemplate,
+            msgTemplate = "{{text}}", // Always forward full notification text
             createdAt = System.currentTimeMillis()
         )
         // Split keywords into (keyword, type) pairs. Currently spec implies "INCLUDE" logic for entered keywords.
@@ -32,6 +31,30 @@ class RuleRepository @Inject constructor(
         val keywordPairs = keywords.map { it to "INCLUDE" }
 
         ruleDao.insertRuleWithDetails(rule, targetApps, keywordPairs)
+    }
+
+    suspend fun getRuleById(ruleId: Int): RuleWithDetails? {
+        return ruleDao.getRuleById(ruleId)
+    }
+
+    suspend fun updateRule(
+        ruleId: Int,
+        name: String,
+        phoneNumber: String,
+        targetApps: List<String>,
+        keywords: List<String>,
+        isEnabled: Boolean
+    ) {
+        val rule = RuleEntity(
+            ruleId = ruleId,
+            ruleName = name,
+            isEnabled = isEnabled,
+            phoneNumber = phoneNumber,
+            msgTemplate = "{{text}}", // Always forward full notification text
+            createdAt = System.currentTimeMillis()
+        )
+        val keywordPairs = keywords.map { it to "INCLUDE" }
+        ruleDao.updateRuleWithDetails(rule, targetApps, keywordPairs)
     }
 
     suspend fun updateRuleStatus(ruleId: Int, isEnabled: Boolean) {

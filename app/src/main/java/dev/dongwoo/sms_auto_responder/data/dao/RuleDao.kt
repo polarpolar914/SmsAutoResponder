@@ -58,6 +58,29 @@ interface RuleDao {
     @Query("SELECT * FROM rules WHERE isEnabled = 1")
     suspend fun getEnabledRulesWithDetails(): List<RuleWithDetails>
 
+    @Transaction
+    @Query("SELECT * FROM rules WHERE ruleId = :ruleId")
+    suspend fun getRuleById(ruleId: Int): RuleWithDetails?
+
+    @Transaction
+    suspend fun updateRuleWithDetails(rule: RuleEntity, apps: List<String>, keywords: List<Pair<String, String>>) {
+        updateRule(rule)
+        // Delete existing apps and keywords
+        deleteRuleApps(rule.ruleId)
+        deleteRuleKeywords(rule.ruleId)
+        // Insert new ones
+        val ruleAppEntities = apps.map { RuleAppEntity(ruleId = rule.ruleId, packageName = it) }
+        val keywordEntities = keywords.map { KeywordEntity(ruleId = rule.ruleId, keyword = it.first, type = it.second) }
+        insertRuleApps(ruleAppEntities)
+        insertKeywords(keywordEntities)
+    }
+
+    @Query("DELETE FROM rule_apps WHERE ruleId = :ruleId")
+    suspend fun deleteRuleApps(ruleId: Int)
+
+    @Query("DELETE FROM keywords WHERE ruleId = :ruleId")
+    suspend fun deleteRuleKeywords(ruleId: Int)
+
     @Update
     suspend fun updateRule(rule: RuleEntity)
 
