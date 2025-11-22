@@ -70,13 +70,16 @@ class AppSelectionViewModel @Inject constructor(
 
             withContext(Dispatchers.IO) {
                 val apps = packageManager.getInstalledPackages(0)
-                    .filter { (it.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 || (it.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0 } // Filter system apps partially
-                    .map {
-                        AppInfo(
-                            name = it.applicationInfo.loadLabel(packageManager).toString(),
-                            packageName = it.packageName,
-                            icon = it.applicationInfo.loadIcon(packageManager)
-                        )
+                    .mapNotNull { packageInfo ->
+                        val appInfo = packageInfo.applicationInfo ?: return@mapNotNull null
+                        if ((appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 || 
+                            (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0) {
+                            AppInfo(
+                                name = appInfo.loadLabel(packageManager).toString(),
+                                packageName = packageInfo.packageName,
+                                icon = appInfo.loadIcon(packageManager)
+                            )
+                        } else null
                     }
                     .sortedBy { it.name }
                 _installedApps.value = apps

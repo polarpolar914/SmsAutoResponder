@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">sms_auto_responder</string>
+    <string name="service_name">SMS Auto Responder Notification Listener</string>
 </resources>

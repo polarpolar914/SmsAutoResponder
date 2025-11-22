@@ -1,9 +1,11 @@
 package dev.dongwoo.sms_auto_responder.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -89,14 +91,14 @@ fun SettingsScreen(
             BookingStyleCard {
                 Column(Modifier.padding(16.dp)) {
                     Text("Global Template", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.size(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = globalTemplate,
                         onValueChange = { viewModel.saveGlobalTemplate(it) },
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Default SMS Message") }
                     )
-                    Spacer(Modifier.size(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text("Used when no specific template is set for a recipient.", style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -121,7 +123,7 @@ fun SettingsScreen(
              BookingStyleCard {
                 Column(Modifier.padding(16.dp)) {
                     Text("Backup & Restore", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.size(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row {
                          Button(onClick = { /* TODO */ }) { Text("Backup") }
                          Spacer(Modifier.width(16.dp))

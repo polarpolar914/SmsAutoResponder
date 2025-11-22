@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -89,13 +91,16 @@ class PhoneNumberDetailViewModel @Inject constructor(
             // Load apps for keyword specific targeting
             // Reusing logic from AppSelection (could be in repository or shared usecase)
              val apps = packageManager.getInstalledPackages(0)
-                .filter { (it.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 || (it.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0 }
-                .map {
-                    AppInfo(
-                        name = it.applicationInfo.loadLabel(packageManager).toString(),
-                        packageName = it.packageName,
-                        icon = null // Don't need icon here really
-                    )
+                .mapNotNull { packageInfo ->
+                    val appInfo = packageInfo.applicationInfo ?: return@mapNotNull null
+                    if ((appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 || 
+                        (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0) {
+                        AppInfo(
+                            name = appInfo.loadLabel(packageManager).toString(),
+                            packageName = packageInfo.packageName,
+                            icon = null // Don't need icon here really
+                        )
+                    } else null
                 }
                 .sortedBy { it.name }
             _installedApps.value = apps
@@ -228,7 +233,7 @@ fun PhoneNumberDetailScreen(
 fun Step1PhoneNumber(phoneNumber: PhoneNumberEntity, viewModel: PhoneNumberDetailViewModel) {
     Column {
         Text("Enter Recipient Details", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.size(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = phoneNumber.phoneNumber,
             onValueChange = { viewModel.updatePhoneNumberField(it) },
@@ -236,14 +241,14 @@ fun Step1PhoneNumber(phoneNumber: PhoneNumberEntity, viewModel: PhoneNumberDetai
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
-        Spacer(Modifier.size(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = phoneNumber.tags,
             onValueChange = { viewModel.updateTags(it) },
             label = { Text("Tags (comma separated)") },
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(Modifier.size(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             "This number will receive automatic SMS replies when notifications match your rules.",
             style = MaterialTheme.typography.bodySmall,
@@ -263,7 +268,7 @@ fun Step2Keywords(
 
     Column {
         Text("Keyword Rules", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.size(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = { showBottomSheet = true }) {
             Icon(Icons.Filled.Add, contentDescription = null)
@@ -271,7 +276,7 @@ fun Step2Keywords(
             Text("Add Keyword Rule")
         }
 
-        Spacer(Modifier.size(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         FlowRow(modifier = Modifier.fillMaxWidth()) {
             keywords.forEach { keyword ->
@@ -338,7 +343,7 @@ fun KeywordBottomSheet(
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Add Keyword Rule", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.size(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = keywordText,
@@ -356,7 +361,7 @@ fun KeywordBottomSheet(
             }
 
             Text("Target App (Optional):", style = MaterialTheme.typography.bodyMedium)
-            LazyColumn(modifier = Modifier.fillMaxWidth().size(150.dp)) {
+            LazyColumn(modifier = Modifier.fillMaxWidth().height(150.dp)) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(4.dp)) {
                         RadioButton(selected = selectedAppPackage == null, onClick = { selectedAppPackage = null })
@@ -389,7 +394,7 @@ fun KeywordBottomSheet(
             ) {
                 Text("Add")
             }
-            Spacer(Modifier.size(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -400,17 +405,17 @@ fun Step3Template(phoneNumber: PhoneNumberEntity, viewModel: PhoneNumberDetailVi
 
     Column {
         Text("Message Template", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.size(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = phoneNumber.template ?: "",
             onValueChange = { viewModel.updateTemplate(it) },
             label = { Text("SMS Content") },
-            modifier = Modifier.fillMaxWidth().size(200.dp),
+            modifier = Modifier.fillMaxWidth().height(200.dp),
             placeholder = { Text("Leave empty to use Global Template") }
         )
 
-        Spacer(Modifier.size(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(onClick = { showVariableDialog = true }) {
             Text("Insert Variable")
@@ -422,7 +427,7 @@ fun Step3Template(phoneNumber: PhoneNumberEntity, viewModel: PhoneNumberDetailVi
             BookingStyleCard {
                 Column(Modifier.padding(16.dp)) {
                     Text("Select Variable")
-                    Spacer(Modifier.size(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     listOf("{{keyword}}", "{{app}}", "{{notification}}", "{{timestamp}}").forEach { v ->
                         TextButton(onClick = {
                             viewModel.updateTemplate((phoneNumber.template ?: "") + v)
@@ -441,7 +446,7 @@ fun Step3Template(phoneNumber: PhoneNumberEntity, viewModel: PhoneNumberDetailVi
 fun Step4Summary(phoneNumber: PhoneNumberEntity, keywords: List<KeywordEntity>) {
     Column {
         Text("Summary", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.size(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         BookingStyleCard {
             Column(Modifier.padding(16.dp)) {

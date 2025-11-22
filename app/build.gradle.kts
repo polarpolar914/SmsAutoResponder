@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "dev.dongwoo.sms_auto_responder"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -23,9 +23,19 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release-key.jks")
+            storePassword = "android123"
+            keyAlias = "sms-auto-responder"
+            keyPassword = "android123"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -58,6 +68,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.material)
 
     // Navigation & Lifecycle
     implementation(libs.androidx.navigation.compose)

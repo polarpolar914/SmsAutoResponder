@@ -5,13 +5,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FloatingActionButton
@@ -104,7 +105,7 @@ fun PhoneNumberItem(
                     text = phoneNumber.phoneNumber,
                     style = androidx.compose.material3.MaterialTheme.typography.titleMedium
                 )
-                Spacer(modifier = Modifier.size(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (phoneNumber.tags.isNotEmpty()) {
                         phoneNumber.tags.split(",").take(3).forEach { tag ->
@@ -115,14 +116,14 @@ fun PhoneNumberItem(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.size(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = if (phoneNumber.lastSentTime > 0) "Last sent: ${java.util.Date(phoneNumber.lastSentTime)}" else "No history",
                     style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
             }
-            Icon(Icons.Filled.ChevronRight, contentDescription = null)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }

@@ -25,3 +25,9 @@
 
 # OS Files
 Thumbs.db
+
+# Keystore Security - DO NOT COMMIT
+*.jks
+*.keystore
+keystore.properties
+KEYSTORE_INFO.md
