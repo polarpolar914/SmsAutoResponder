@@ -43,7 +43,7 @@ fun CreateRuleScreen(
         packages.filter {
             pm.getLaunchIntentForPackage(it.packageName) != null
         }.map {
-            AppInfo(it.applicationInfo.loadLabel(pm).toString(), it.packageName)
+            AppInfo(it.applicationInfo?.loadLabel(pm).toString(), it.packageName)
         }.sortedBy { it.name }
     }
 
