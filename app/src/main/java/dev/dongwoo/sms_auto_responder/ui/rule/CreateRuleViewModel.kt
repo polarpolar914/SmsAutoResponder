@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import dev.dongwoo.sms_auto_responder.ui.rule.AppInfo
 
 @HiltViewModel
 class CreateRuleViewModel @Inject constructor(
@@ -26,17 +27,16 @@ class CreateRuleViewModel @Inject constructor(
     }
 
     fun saveRule(
-        appName: String,
-        packageName: String,
+        apps: List<AppInfo>,
         keywords: List<String>,
         phoneNumber: String,
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
             ruleRepository.addRule(
-                name = "$appName 알림",
+                name = buildRuleName(apps),
                 phoneNumber = phoneNumber,
-                targetApps = listOf(packageName),
+                targetApps = apps.map { it.packageName },
                 keywords = keywords
             )
             onSuccess()
@@ -45,8 +45,7 @@ class CreateRuleViewModel @Inject constructor(
 
     fun updateRule(
         ruleId: Int,
-        appName: String,
-        packageName: String,
+        apps: List<AppInfo>,
         keywords: List<String>,
         phoneNumber: String,
         isEnabled: Boolean,
@@ -55,13 +54,19 @@ class CreateRuleViewModel @Inject constructor(
         viewModelScope.launch {
             ruleRepository.updateRule(
                 ruleId = ruleId,
-                name = "$appName 알림",
+                name = buildRuleName(apps),
                 phoneNumber = phoneNumber,
-                targetApps = listOf(packageName),
+                targetApps = apps.map { it.packageName },
                 keywords = keywords,
                 isEnabled = isEnabled
             )
             onSuccess()
         }
+    }
+
+    private fun buildRuleName(apps: List<AppInfo>): String {
+        if (apps.isEmpty()) return "새 규칙"
+        val first = apps.first().name
+        return if (apps.size == 1) "$first 알림" else "$first 외 ${apps.size - 1}개 앱 알림"
     }
 }

@@ -14,11 +14,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -26,6 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import dev.dongwoo.sms_auto_responder.data.dao.RuleWithDetails
 import dev.dongwoo.sms_auto_responder.ui.component.CustomButton
@@ -42,6 +47,7 @@ fun HomeScreen(
     val context = LocalContext.current
     val rules by viewModel.rules.collectAsState()
     val successCount by viewModel.successCount.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     // Permission Request Logic
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -62,8 +68,28 @@ fun HomeScreen(
     }
 
     // Check Notification Access
-    val isNotificationListenerEnabled = remember(Unit) {
-        NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+    var isNotificationListenerEnabled by remember { mutableStateOf(false) }
+
+    val refreshNotificationAccess = remember(context) {
+        {
+            isNotificationListenerEnabled = NotificationManagerCompat
+                .getEnabledListenerPackages(context)
+                .contains(context.packageName)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshNotificationAccess()
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshNotificationAccess()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     if (!isNotificationListenerEnabled) {
@@ -90,59 +116,80 @@ fun HomeScreen(
     Scaffold(
         containerColor = DeepMidnight,
         bottomBar = {
-             // Custom Bottom Bar as per spec
-             BottomAppBar(
-                 containerColor = DeepMidnight,
-                 actions = {
-                     IconButton(onClick = { /* Stay on Home */ }) {
-                         Icon(Icons.Default.Add, contentDescription = "Home", tint = PrimaryAccent)
-                     }
-                     Spacer(modifier = Modifier.weight(1f))
-                     IconButton(onClick = { navController.navigate(Screen.History.route) }) {
-                         Icon(Icons.Default.History, contentDescription = "History", tint = TextMediumEmphasisOnDark)
-                     }
-                 },
-                 floatingActionButton = {
-                     CustomIconButton(
-                         onClick = { navController.navigate(Screen.CreateRule.createRoute()) },
-                         modifier = Modifier.size(64.dp)
-                     ) {
-                         Icon(Icons.Default.Add, contentDescription = "Add Rule", tint = TextHighEmphasisOnDark, modifier = Modifier.size(32.dp))
-                     }
-                 }
-             )
+            NavigationBar(
+                containerColor = SurfaceDark,
+                tonalElevation = 12.dp
+            ) {
+                NavigationBarItem(
+                    selected = true,
+                    onClick = { /* Stay on home */ },
+                    icon = { Icon(Icons.Default.Home, contentDescription = "홈", tint = PrimaryAccent) },
+                    label = { Text("대시보드") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { navController.navigate(Screen.History.route) },
+                    icon = { Icon(Icons.Default.History, contentDescription = "히스토리", tint = TextMediumEmphasisOnDark) },
+                    label = { Text("기록") }
+                )
+            }
+        },
+        floatingActionButton = {
+            CustomIconButton(
+                onClick = { navController.navigate(Screen.CreateRule.createRoute()) },
+                modifier = Modifier.size(68.dp)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add Rule",
+                    tint = TextHighEmphasisOnDark,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(DeepMidnight, SurfaceDark)))
         ) {
             // Header Area
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.35f)
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .weight(0.38f)
+                    .padding(16.dp)
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(SecondaryAccent, PrimaryAccent),
+                            start = Alignment.TopStart,
+                            end = Alignment.BottomEnd
+                        )
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text("총 발송 횟수", style = Typography.titleMedium, color = TextMediumEmphasisOnDark)
-                Text("${successCount} 건", style = Typography.displayLarge, color = TextHighEmphasisOnDark)
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    QuickActionButton(icon = Icons.Default.Add, label = "규칙 추가") {
-                        navController.navigate(Screen.CreateRule.createRoute())
-                    }
-                    QuickActionButton(icon = Icons.Default.History, label = "발송 기록") {
-                        navController.navigate(Screen.History.route)
+                    Text("총 발송 횟수", style = Typography.titleMedium, color = TextHighEmphasisOnDark)
+                    Text("${successCount} 건", style = Typography.displayLarge, color = TextHighEmphasisOnDark)
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        QuickActionButton(icon = Icons.Default.Add, label = "규칙 추가") {
+                            navController.navigate(Screen.CreateRule.createRoute())
+                        }
+                        QuickActionButton(icon = Icons.Default.History, label = "발송 기록") {
+                            navController.navigate(Screen.History.route)
+                        }
                     }
                 }
             }
@@ -184,22 +231,29 @@ fun HomeScreen(
 @Composable
 fun QuickActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        IconButton(
+        FilledTonalButton(
             onClick = onClick,
-            colors = IconButtonDefaults.iconButtonColors(containerColor = SurfaceDark)
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = Color.White.copy(alpha = 0.16f),
+                contentColor = TextHighEmphasisOnDark
+            )
         ) {
-            Icon(icon, contentDescription = label, tint = PrimaryAccent)
+            Icon(icon, contentDescription = label, tint = TextHighEmphasisOnDark)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(label, style = Typography.labelLarge)
         }
-        Text(label, style = Typography.labelLarge, color = TextMediumEmphasisOnDark)
+        Spacer(modifier = Modifier.height(4.dp))
     }
 }
 
 @Composable
 fun RuleItem(ruleDetails: RuleWithDetails, onClick: () -> Unit, onToggle: (Boolean) -> Unit) {
+    val appSummary = ruleDetails.apps.joinToString(", ") { it.packageName.substringAfterLast('.') }
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(18.dp),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
@@ -213,6 +267,7 @@ fun RuleItem(ruleDetails: RuleWithDetails, onClick: () -> Unit, onToggle: (Boole
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(ruleDetails.rule.ruleName, style = Typography.titleMedium, color = TextHighEmphasisOnLight, fontWeight = FontWeight.Bold)
+                Text("앱: ${appSummary}", style = Typography.bodySmall, color = TextMediumEmphasisOnDark)
                 Text("수신: ${ruleDetails.rule.phoneNumber}", style = Typography.bodyMedium, color = Color.Gray)
             }
 

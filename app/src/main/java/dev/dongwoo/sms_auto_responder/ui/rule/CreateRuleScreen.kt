@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -41,6 +42,7 @@ fun CreateRuleScreen(
 
     // State
     var selectedApp by remember { mutableStateOf<AppInfo?>(null) }
+    val selectedApps = remember { mutableStateListOf<AppInfo>() }
     val keywords = remember { mutableStateListOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
@@ -64,15 +66,14 @@ fun CreateRuleScreen(
             } else {
                 keywords.add("")
             }
-            // Find the app
-            val packageName = ruleDetails.apps.firstOrNull()?.packageName
-            if (packageName != null) {
-                val pm = context.packageManager
+            selectedApps.clear()
+            val pm = context.packageManager
+            ruleDetails.apps.forEach { appEntity ->
                 try {
-                    val appInfo = pm.getApplicationInfo(packageName, 0)
-                    selectedApp = AppInfo(appInfo.loadLabel(pm).toString(), packageName)
+                    val appInfo = pm.getApplicationInfo(appEntity.packageName, 0)
+                    selectedApps.add(AppInfo(appInfo.loadLabel(pm).toString(), appEntity.packageName))
                 } catch (e: Exception) {
-                    selectedApp = AppInfo(packageName, packageName)
+                    selectedApps.add(AppInfo(appEntity.packageName, appEntity.packageName))
                 }
             }
         }
@@ -87,6 +88,10 @@ fun CreateRuleScreen(
         }.map {
             AppInfo(it.applicationInfo?.loadLabel(pm).toString(), it.packageName)
         }.sortedBy { it.name }
+    }
+
+    val availableApps = installedApps.filter { installed ->
+        selectedApps.none { it.packageName == installed.packageName }
     }
 
     Scaffold(
@@ -140,7 +145,7 @@ fun CreateRuleScreen(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
-                        installedApps.forEach { app ->
+                        availableApps.forEach { app ->
                             DropdownMenuItem(
                                 text = { Text(app.name) },
                                 onClick = {
@@ -148,6 +153,54 @@ fun CreateRuleScreen(
                                     expanded = false
                                 }
                             )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("선택된 앱 (${selectedApps.size})", style = Typography.labelLarge, color = TextMediumEmphasisOnDark)
+                    TextButton(onClick = {
+                        selectedApp?.let {
+                            if (selectedApps.none { app -> app.packageName == it.packageName }) {
+                                selectedApps.add(it)
+                            }
+                            selectedApp = null
+                        }
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "앱 추가", tint = PrimaryAccent)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("추가", color = PrimaryAccent)
+                    }
+                }
+
+                selectedApps.forEach { app ->
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = CardOverlay,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(app.name, color = TextHighEmphasisOnDark, style = Typography.bodyLarge)
+                                Text(app.packageName, color = TextMediumEmphasisOnDark, style = Typography.bodySmall)
+                            }
+                            IconButton(onClick = { selectedApps.remove(app) }) {
+                                Icon(Icons.Default.Remove, contentDescription = "앱 제거", tint = TextMediumEmphasisOnDark)
+                            }
                         }
                     }
                 }
@@ -257,13 +310,12 @@ fun CreateRuleScreen(
             CustomButton(
                 text = if (isEditMode) "규칙 수정하기" else "규칙 저장하기",
                 onClick = {
-                    if (selectedApp != null && phoneNumber.isNotEmpty()) {
+                    if (selectedApps.isNotEmpty() && phoneNumber.isNotEmpty()) {
                         val filteredKeywords = keywords.filter { it.isNotBlank() }
                         if (isEditMode && ruleId != null) {
                             viewModel.updateRule(
                                 ruleId = ruleId,
-                                appName = selectedApp!!.name,
-                                packageName = selectedApp!!.packageName,
+                                apps = selectedApps.toList(),
                                 keywords = filteredKeywords,
                                 phoneNumber = phoneNumber,
                                 isEnabled = currentRule?.rule?.isEnabled ?: true,
@@ -271,8 +323,7 @@ fun CreateRuleScreen(
                             )
                         } else {
                             viewModel.saveRule(
-                                appName = selectedApp!!.name,
-                                packageName = selectedApp!!.packageName,
+                                apps = selectedApps.toList(),
                                 keywords = filteredKeywords,
                                 phoneNumber = phoneNumber,
                                 onSuccess = { navController.popBackStack() }
